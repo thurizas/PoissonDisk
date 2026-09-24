@@ -1,16 +1,29 @@
+#include <iostream>
+#ifdef __WIN32
+   #include "XGetopt.h"
+#else
+   #include <unistd.h>
+   #include <getopt.h>
+#endif
+
+
 #include "SFML/Graphics.hpp"
 
 #include "common.h"
 #include "XGetopt.h"
 #include "logger.h"
 
-#include <iostream>
+
+
 #include <algorithm>
 #include <optional>
 #include <vector>
 #include <charconv>              // needed for std::from_chars
 #include <string_view>
 #include <fstream>
+#include <cstring>
+
+
 
 #include "poissonDisk.h"
 
@@ -24,30 +37,37 @@ extern const uint8_t colorCmdOut = 0;
 
 int main(int argc, char** argv)
 {
-  bool     fontAvailable = true;
-  int8_t   choice = 1;
-  uint16_t winWidth = defWidth;
-  uint16_t winHeight = defHeight;
-  uint32_t cntPoints = defCntPoints;
-  uint32_t trials = defTrials;
+  bool               fontAvailable = true;
+  int8_t             choice = 1;
+  uint16_t           winWidth = defWidth;
+  uint16_t           winHeight = defHeight;
+  int32_t            cntPoints = defCntPoints;
+  uint32_t           trials = defTrials;
   std::optional<int> seed;
-  float_t  minRadius = defMinRadius;
-  uint8_t  state = STATE_RUN | STATE_GRID;
-  int debugLvl = CLogger::level::WARNING;
-  float_t timeStep = 0.5f;                   // 500 msec per simulation step
+  float_t            minRadius = defMinRadius;
+  uint16_t           state = STATE_RUN | STATE_GRID;
+  int                debugLvl = CLogger::level::WARNING;
+  float_t            timeStep = 0.5f;                   // 500 msec per simulation step
 
   sf::Color lightGray(43, 43, 43);
 
-  while (-1 != (choice = getopt(argc, argv, "w:h:r:n:t:s:dvH")))
+// need to adjust type of argv on Linux systems to match how the POSIX version is declared
+#ifdef __WIN32
+  while(-1 != (choice = getopt(argc, argv, "w:h:r:n:t:s:dvH")))
+#else
+  while (-1 != (choice = getopt(argc, const_cast<char*const*>(argv), "w:h:r:n:t:s:dvH")))
+#endif
   {
     switch (choice)
     {
     case 'w':
       if (isInteger(optarg))
       {
-        winWidth = atoi(optarg);
-        if (winWidth <= 0) { std::cout << "width can not be zero or less, using default width" << std::endl; winWidth = defWidth; }
-        if (winWidth > 65535) { std::cout << "width can not be greater than 65,535 - using default height" << std::endl; winWidth = defWidth; }
+        int32_t width = atoi(optarg);
+        if (width <= 0) { std::cout << "width can not be zero or less, using default width" << std::endl; width = defWidth; }
+        if (width > 65535) { std::cout << "width can not be greater than 65,535 - using default height" << std::endl; width = defWidth; }
+
+        winWidth = static_cast<uint16_t>(width);
       }
       else
       {
@@ -58,9 +78,11 @@ int main(int argc, char** argv)
     case 'h':
       if (isInteger(optarg))
       {
-        winHeight = atoi(optarg);
-        if (winHeight <= 0) { std::cout << "height can not be zero or less, using default width" << std::endl; winHeight = defWidth; }
-        if (winHeight > 65535) { std::cout << "height can not be greater than 65,535 - using default height" << std::endl; winHeight = defWidth; }
+        int32_t height = atoi(optarg);
+        if (height <= 0) { std::cout << "height can not be zero or less, using default width" << std::endl; height = defHeight; }
+        if (height > 65535) { std::cout << "height can not be greater than 65,535 - using default height" << std::endl; height = defHeight; }
+
+        winHeight = static_cast<uint16_t>(height);
       }
       else
       {
@@ -108,6 +130,7 @@ int main(int argc, char** argv)
       {
         std::cout << "argument to -s must be an integer, using random value for the PRNG seed" << std::endl;
       }
+      break;
 
     case 'd':
       debugLvl--;  
@@ -229,6 +252,10 @@ int main(int argc, char** argv)
           {
             state ^= STATE_GRID;                          // _g_rid -- toggle grid on/off
           }
+          if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::B)
+          {
+            state ^= STATE_CIRCLE; 
+          }
           if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Equal)
           {
             timeStep /= 2.0;
@@ -299,15 +326,24 @@ int main(int argc, char** argv)
                 text.setPosition(centers.at(ndx).position);  // set upper left corner
                 window.draw(text);
               }
-
             }
-
           }
 
           for (auto pt : disk.getPtSet())
           {
             sf::Vertex point({ pt.first, pt.second }, sf::Color::Green);
             window.draw(&point, 1, sf::PrimitiveType::Points);
+
+            if(state & STATE_CIRCLE)
+            { 
+                sf::CircleShape circle(minRadius / 2);
+                circle.setFillColor(sf::Color::Transparent);
+                circle.setOutlineThickness(1.f);
+                circle.setOutlineColor(sf::Color::Green);
+                circle.setOrigin(minRadius / 2, minRadius / 2);
+                circle.setPosition({ pt.first, pt.second });
+                window.draw(circle);
+            }
           }
           window.display();
         }
@@ -377,6 +413,7 @@ static void showHelp(const char* name)
   std::cout << "\n\nKeyboard commands while the simulation is running:\n                                    " << std::endl;
   std::cout << "escape key                 exits the simulation                                             " << std::endl;
   std::cout << "g                          toggles grid on/off                                              " << std::endl;
+  std::cout << "b                          toggles bounding circles on/off                                  " << std::endl;
   std::cout << "+                          increase the speed of the simulation                             " << std::endl;
   std::cout << "-                          decrease the speed of the simulation                             " << std::endl;
   std::cout << "r                          run the simulation                                               " << std::endl;

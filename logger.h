@@ -101,10 +101,17 @@ private:
 
     int             m_level;
     static CLogger* m_pThis;
-#pragma warning(push)
-#pragma warning(disable: 4251)
-    mapType         m_mapCallbacks;  
-#pragma warning(pop)
+
+#ifdef __WIN32
+  #pragma warning(push)
+  #pragma warning(disable: 4251)
+#endif
+  
+  mapType         m_mapCallbacks;
+
+#ifdef __WIN32
+  #pragma warning(pop)
+#endif
 };
 
 #endif

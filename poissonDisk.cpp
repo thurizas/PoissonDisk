@@ -74,13 +74,13 @@ bool poissonDisk::calcNextPt(uint32_t attempts)
   bool     ptAcceptable = false;
   int32_t  trials = attempts;
   uint32_t rootPtNdx;
-  uint32_t ndx;
+  uint32_t newNdx;
   float_t  x;
   float_t  y;
 
   if((m_ptSet.size() < m_cntPts) && (!m_workingSet.empty()))           // check to see if we generated the correct number of points
   { 
-    uint32_t max = static_cast<uint32_t>(m_workingSet.size());        // pick a random point from the working set
+    uint32_t max = static_cast<uint32_t>(m_workingSet.size());         // pick a random point from the working set
     std::uniform_int_distribution<uint32_t> dist(0, max - 1);
 
     rootPtNdx = dist(*m_pGen);
@@ -97,18 +97,19 @@ bool poissonDisk::calcNextPt(uint32_t attempts)
         ptAcceptable &= inRange(y, m_Yrange);
       } while (!ptAcceptable);
 
-      ndx = genIndex(x, y);                                  // determine grid cell candidate point is in
-      CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::INFO, "candidate cell as (%.4f, %.4f), index: %d", x, y, ndx);
-      if (!m_grid.at(ndx).isOccupied)                        // only one point per cell
+      newNdx = genIndex(x, y);                                  // determine grid cell candidate point is in
+      CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::INFO, "candidate cell as (%.4f, %.4f), index: %d", x, y, newNdx);
+      if (!m_grid.at(newNdx).isOccupied)                        // only one point per cell
       {
-        uint32_t col = static_cast<uint32_t>(floor(x / m_cellDim.second));
-        uint32_t row = static_cast<uint32_t>(floor(y / m_cellDim.first));
-
-        for (uint32_t r = row - 2; r <= row + 2; r++)
+        int32_t col = static_cast<int32_t>(floor(x / m_cellDim.second));
+        int32_t row = static_cast<int32_t>(floor(y / m_cellDim.first));
+        ptAcceptable = true;
+        
+        for (int32_t r = row - 2; r <= row + 2; r++)
         {
           if ((r < 0) || (r > m_maxRow-1))                 // insure we did not step outside of grid
             continue;
-          for (uint32_t c = col - 2; c <= col + 2; c++)
+          for (int32_t c = col - 2; c <= col + 2; c++)
           {
             
             if ((c < 0) || c > m_maxCol-1)                 // insure we did not step outside of grid
@@ -117,14 +118,22 @@ bool poissonDisk::calcNextPt(uint32_t attempts)
             uint32_t testNdx = r * m_maxCol + c;
             CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::INFO, "checking cell at r: %d, c: %d, ndx: %d", r, c, testNdx);
             
-            if (ndx == testNdx)                              // looking at the cell the candidate point is in
+            if (newNdx == testNdx)                           // looking at the cell the candidate point is in
+            {
+              CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::INFO, ".... cell with new point");
               continue;
+            }
             else if (!m_grid.at(testNdx).isOccupied)         // grid cell is empty, nothing to do
+            {
+              CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::INFO, ".... cell is empty");
               continue;
+            }
             else                                             // grid cell is occupied
             {
-              float_t d = sqrt((m_grid.at(testNdx).Xcoord - x) * (m_grid.at(testNdx).Xcoord - x) + (m_grid.at(testNdx).Ycoord - y) * (m_grid.at(testNdx).Ycoord - y));
+              float_t d = sqrt((m_grid.at(testNdx).Xcoord - x) * (m_grid.at(testNdx).Xcoord - x) +
+                               (m_grid.at(testNdx).Ycoord - y) * (m_grid.at(testNdx).Ycoord - y));
               if (d < m_minRadius) ptAcceptable = false;
+              CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::INFO, ".... cell occupied, distance: %.4f", d);
             }
           }
         }
@@ -143,8 +152,8 @@ bool poissonDisk::calcNextPt(uint32_t attempts)
     {
       m_ptSet.push_back(std::pair<float_t, float_t>(x, y));
       m_workingSet.push_back(std::pair<float_t, float_t>(x, y));
-      m_grid.at(ndx) = gridEntryT{ .isOccupied = true, .Xcoord = x, .Ycoord = y };
-      CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::DEBUG, "next point is at (%4.f, %4.f), index is: %d", x, y, ndx);
+      m_grid.at(newNdx) = gridEntryT{ .isOccupied = true, .Xcoord = x, .Ycoord = y };
+      CLogger::getInstance()->outMsg(colorCmdOut, CLogger::level::DEBUG, "next point is at (%4.f, %4.f), index is: %d", x, y, newNdx);
     }
     else
     {
