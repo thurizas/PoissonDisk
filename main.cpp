@@ -225,7 +225,11 @@ int main(int argc, char** argv)
 
     // create font for use in rendering text 
     sf::Font font;
-    if (!font.loadFromFile(R"(C:\Windows\Fonts\arial.ttf)")) 
+    char* fontBuf = new char[strlen(fontPath) + strlen(fontName) + 1];
+    memset(fontBuf, '\0', strlen(fontPath) + strlen(fontName) + 1);
+    strncpy(fontBuf, fontPath, strlen(fontPath));
+    strncat(fontBuf, fontName, strlen(fontName));
+    if (!font.loadFromFile(fontBuf) 
     {
       pLogger->outMsg(colorCmdOut, CLogger::level::ERR, "SFML internal loader failed entirely (Check Debug/Release libs)");
       fontAvailable = false;
@@ -370,6 +374,8 @@ int main(int argc, char** argv)
           }
         }
       } 
+
+      delete[] fontPath; 
     }
     else
     {
@@ -380,7 +386,6 @@ int main(int argc, char** argv)
   {
     std::cerr << "Out of memory, fatal error - exiting" << std::endl;
   }
-
 
   pLogger->outMsg(colorCmdOut, CLogger::level::NOTICE, "logging engine shuting down");
   pLogger->delInstance();
