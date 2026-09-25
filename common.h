@@ -47,4 +47,14 @@ typedef struct _ctx
   std::optional<int> seed;            // optional value of the PRNG seed
 } ctxT, *pctxT;
 
+#ifdef __WIN32
+static const char* fontPath = R"(C:\Windows\Fonts\)";
+static const char* fontName = R"(arial.ttf)";
+#else
+static const char* fontPath = R"(/home/ghuber/.local/share/fonts/ttf/)";
+static const char* fontName = R"(intelone-mono-font-family-regular.ttf)";
+#endif
+
+
+
 #endif
