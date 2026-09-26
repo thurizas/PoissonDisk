@@ -229,7 +229,7 @@ int main(int argc, char** argv)
     memset(fontBuf, '\0', strlen(fontPath) + strlen(fontName) + 1);
     strncpy(fontBuf, fontPath, strlen(fontPath));
     strncat(fontBuf, fontName, strlen(fontName));
-    if (!font.loadFromFile(fontBuf) 
+    if (!font.loadFromFile(fontBuf))
     {
       pLogger->outMsg(colorCmdOut, CLogger::level::ERR, "SFML internal loader failed entirely (Check Debug/Release libs)");
       fontAvailable = false;
@@ -375,7 +375,7 @@ int main(int argc, char** argv)
         }
       } 
 
-      delete[] fontPath; 
+      delete[] fontBuf; 
     }
     else
     {
